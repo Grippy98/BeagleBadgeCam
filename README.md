@@ -73,6 +73,8 @@ It is recommended to use a virtual environment to manage the project's dependenc
     *   `+`: Increase the camera resolution.
     *   `-`: Decrease the camera resolution.
     *   `space`: Save the current frame as a JPG image.
+    *   `left arrow`: Decrease the black and white threshold.
+    *   `right arrow`: Increase the black and white threshold.
 
 ## Configuration
 

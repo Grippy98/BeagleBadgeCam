@@ -6,7 +6,7 @@ import sys
 import platform
 import subprocess
 
-def gameboy_effect(frame):
+def gameboy_effect(frame, threshold_value):
     # Downscale the frame to a low resolution
     h, w, _ = frame.shape
     small_frame = cv2.resize(frame, (w // 4, h // 4), interpolation=cv2.INTER_NEAREST)
@@ -15,15 +15,14 @@ def gameboy_effect(frame):
     gray = cv2.cvtColor(small_frame, cv2.COLOR_BGR2GRAY)
 
     # Apply a threshold to create a 2-bit color depth
-    _, thresh = cv2.threshold(gray, 128, 255, cv2.THRESH_BINARY)
+    _, thresh = cv2.threshold(gray, threshold_value, 255, cv2.THRESH_BINARY)
 
     # Upscale back to the original size
     output = cv2.resize(thresh, (w, h), interpolation=cv2.INTER_NEAREST)
 
     return cv2.cvtColor(output, cv2.COLOR_GRAY2BGR)
 
-def overlay_mustache(frame, face_cascade, mustache_img):
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+def overlay_mustache(frame, gray, face_cascade, mustache_img):
     faces = face_cascade.detectMultiScale(gray, 1.3, 5)
 
     for (x, y, w, h) in faces:
@@ -52,19 +51,20 @@ def main():
     with open('config.json', 'r') as f:
         config = json.load(f)
 
-    if not config.get('bluetooth_mac_address'):
-        print("Bluetooth MAC address not found in config.json.")
-        response = input("Would you like to scan for Bluetooth devices now? (y/n): ")
-        if response.lower() == 'y':
-            subprocess.run([sys.executable, 'bluetooth_scanner.py'])
-            with open('config.json', 'r') as f:
-                config = json.load(f)
-            if not config.get('bluetooth_mac_address'):
-                print("No device was selected. Exiting.")
+    if platform.system() == "Linux":
+        if not config.get('bluetooth_mac_address'):
+            print("Bluetooth MAC address not found in config.json.")
+            response = input("Would you like to scan for Bluetooth devices now? (y/n): ")
+            if response.lower() == 'y':
+                subprocess.run([sys.executable, 'bluetooth_scanner.py'])
+                with open('config.json', 'r') as f:
+                    config = json.load(f)
+                if not config.get('bluetooth_mac_address'):
+                    print("No device was selected. Exiting.")
+                    return
+            else:
+                print("Exiting.")
                 return
-        else:
-            print("Exiting.")
-            return
 
     resolutions = [
         (128, 112),
@@ -86,6 +86,9 @@ def main():
 
     cap = cv2.VideoCapture(0)
     mustache_on = False
+    threshold_values = [64, 128, 192]
+    threshold_index = 1
+    threshold_value = threshold_values[threshold_index]
 
     if not cap.isOpened():
         print("Error: Could not open video stream. Please check camera permissions.")
@@ -103,11 +106,14 @@ def main():
         # Resize the frame
         frame = cv2.resize(frame, (width, height))
 
-        # Apply Game Boy effect
-        output_frame = gameboy_effect(frame)
+        # Create a grayscale version for face detection before applying effects
+        gray_for_detection = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
         if mustache_on:
-            output_frame = overlay_mustache(output_frame, face_cascade, mustache_img)
+            frame = overlay_mustache(frame, gray_for_detection, face_cascade, mustache_img)
+
+        # Apply Game Boy effect
+        output_frame = gameboy_effect(frame, threshold_value)
 
         # Resize for final output
         output_frame = cv2.resize(output_frame, (400, 200))
@@ -126,20 +132,27 @@ def main():
 
         cv2.imshow('BeagleBadgeCam', final_frame)
 
-        key = cv2.waitKey(1) & 0xFF
-        if key == ord('q'):
+        key = cv2.waitKeyEx(1)  # Use waitKeyEx for special keys
+        if key == -1:  # No key pressed
+            pass
+        elif key & 0xFF == ord('q'):
             break
-        elif key == ord('m'):
+        elif key & 0xFF == ord('m'):
             mustache_on = not mustache_on
-        elif key == ord('+') or key == ord('='):
+        elif key & 0xFF == ord('+') or key & 0xFF == ord('='):
             res_index = min(len(resolutions) - 1, res_index + 1)
             width, height = resolutions[res_index]
             print(f"Resolution: {width}x{height}")
-        elif key == ord('-'):
+        elif key & 0xFF == ord('-'):
             res_index = max(0, res_index - 1)
             width, height = resolutions[res_index]
             print(f"Resolution: {width}x{height}")
-        elif key == ord(' '):
+        # Key code for arrow keys on this system
+        elif key == 3:  # Arrow Key Pressed
+            threshold_index = (threshold_index + 1) % len(threshold_values)
+            threshold_value = threshold_values[threshold_index]
+            print(f"Threshold: {threshold_value}")
+        elif key & 0xFF == ord(' '):
             filename = f"capture_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
             cv2.imwrite(filename, final_frame)
             print(f"Saved {filename}")
@@ -153,6 +166,9 @@ def main():
                         print(f"Error printing: {e}")
             else:
                 print("Printing is not supported on this operating system.")
+        else:
+            if key != -1:
+                print(f"Unrecognized key code: {key}")
 
     cap.release()
     cv2.destroyAllWindows()
