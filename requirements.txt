@@ -1,0 +1,4 @@
+opencv-python
+numpy
+bleak
+phomemo-printer
