@@ -2,6 +2,10 @@
 
 BeagleBadgeCam is a Python application that provides a Game Boy-style camera feed with a mustache overlay option. It's designed to be a fun, retro-style camera application.
 
+## Sample Output
+
+![Sample Output](photos/sample.jpg)
+
 ## Features
 
 *   **Game Boy Camera Effect:** The camera feed is processed to mimic the look of the original Game Boy camera, with a 2-bit color depth.
