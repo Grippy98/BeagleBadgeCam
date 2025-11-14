@@ -5,6 +5,7 @@ from datetime import datetime
 import sys
 import platform
 import subprocess
+from PIL import Image, ImageDraw, ImageFont
 
 def gameboy_effect(frame, threshold_value):
     # Downscale the frame to a low resolution
@@ -122,10 +123,56 @@ def main():
         top_bezel = np.zeros((50, 400, 3), dtype=np.uint8)
         bottom_bezel = np.zeros((50, 400, 3), dtype=np.uint8)
 
-        # Add text to bezels
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        cv2.putText(top_bezel, "Moustache Cam", (100, 35), font, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
-        cv2.putText(bottom_bezel, "BeagleBadge", (120, 35), font, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
+        # Add text to bezels using early_gameboy.ttf font
+        try:
+            # Load the TTF font
+            font_path = "fonts/early_gameboy.ttf"
+            font_size = 20
+            font = ImageFont.truetype(font_path, font_size)
+        except Exception as e:
+            print(f"Could not load TTF font: {e}")
+            print("Falling back to default OpenCV font")
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            
+        # Convert OpenCV frames to PIL images for TTF font support
+        top_bezel_pil = Image.fromarray(cv2.cvtColor(top_bezel, cv2.COLOR_BGR2RGB))
+        bottom_bezel_pil = Image.fromarray(cv2.cvtColor(bottom_bezel, cv2.COLOR_BGR2RGB))
+        
+        # Draw text with TTF font
+        draw_top = ImageDraw.Draw(top_bezel_pil)
+        draw_bottom = ImageDraw.Draw(bottom_bezel_pil)
+        
+        try:
+            # Calculate text size for centering
+            text_top = "Moustache Cam"
+            text_bottom = "BeagleBadge"
+            
+            # Get text size (this is approximate, but works for centering)
+            try:
+                # For TTF fonts, we need to estimate text size or use a more precise method
+                top_text_width = font.getlength(text_top) if hasattr(font, 'getlength') else 100
+                bottom_text_width = font.getlength(text_bottom) if hasattr(font, 'getlength') else 100
+            except:
+                # Fallback to approximate values if getlength is not available
+                top_text_width = 120
+                bottom_text_width = 120
+            
+            # Center the text (width of bezel is 400)
+            top_x = (400 - top_text_width) // 2
+            bottom_x = (400 - bottom_text_width) // 2
+            
+            # Draw text with TTF font (adjusted y position to be more centered)
+            draw_top.text((top_x, 10), text_top, font=font, fill=(255, 255, 255))
+            draw_bottom.text((bottom_x, 10), text_bottom, font=font, fill=(255, 255, 255))
+            
+            # Convert back to OpenCV format
+            top_bezel = cv2.cvtColor(np.array(top_bezel_pil), cv2.COLOR_RGB2BGR)
+            bottom_bezel = cv2.cvtColor(np.array(bottom_bezel_pil), cv2.COLOR_RGB2BGR)
+        except Exception as e:
+            print(f"Error rendering text with TTF font: {e}")
+            # Fall back to OpenCV font
+            cv2.putText(top_bezel, "Moustache Cam", (100, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
+            cv2.putText(bottom_bezel, "BeagleBadge", (120, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
 
         # Combine bezels and frame
         final_frame = np.vstack((top_bezel, output_frame, bottom_bezel))
@@ -148,7 +195,7 @@ def main():
             width, height = resolutions[res_index]
             print(f"Resolution: {width}x{height}")
         # Key code for arrow keys on this system
-        elif key == 3:  # Arrow Key Pressed
+        elif key == 63234:  # Left Arrow Key Pressed
             threshold_index = (threshold_index + 1) % len(threshold_values)
             threshold_value = threshold_values[threshold_index]
             print(f"Threshold: {threshold_value}")
