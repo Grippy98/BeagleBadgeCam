@@ -87,9 +87,11 @@ def main():
 
     cap = cv2.VideoCapture(0)
     mustache_on = False
-    threshold_values = [64, 128, 192]
-    threshold_index = 1
-    threshold_value = threshold_values[threshold_index]
+    # More granular thresholds with min/max limits
+    threshold_value = 128  # Current threshold value
+    min_threshold = 32   # Minimum threshold value
+    max_threshold = 255  # Maximum threshold value
+    camera_rotation = 0  # 0, 90, 180, 270 degrees
 
     if not cap.isOpened():
         print("Error: Could not open video stream. Please check camera permissions.")
@@ -103,6 +105,14 @@ def main():
         if not ret:
             print("Error: Can't receive frame (stream end?). Exiting ...")
             break
+
+        # Apply camera rotation if needed
+        if camera_rotation == 90:
+            frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+        elif camera_rotation == 180:
+            frame = cv2.rotate(frame, cv2.ROTATE_180)
+        elif camera_rotation == 270:
+            frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
 
         # Resize the frame
         frame = cv2.resize(frame, (width, height))
@@ -149,7 +159,7 @@ def main():
             
             # Get text size (this is approximate, but works for centering)
             try:
-                # For TTF fonts, we need to estimate text size or use a more precise method
+                # For TTF fonts, need to estimate text size or use a more precise method
                 top_text_width = font.getlength(text_top) if hasattr(font, 'getlength') else 100
                 bottom_text_width = font.getlength(text_bottom) if hasattr(font, 'getlength') else 100
             except:
@@ -196,9 +206,15 @@ def main():
             print(f"Resolution: {width}x{height}")
         # Key code for arrow keys on this system
         elif key == 63234:  # Left Arrow Key Pressed
-            threshold_index = (threshold_index + 1) % len(threshold_values)
-            threshold_value = threshold_values[threshold_index]
+            threshold_value = max(min_threshold, threshold_value - 10)
             print(f"Threshold: {threshold_value}")
+        elif key == 63235:  # Right Arrow Key Pressed
+            threshold_value = min(max_threshold, threshold_value + 10)
+            print(f"Threshold: {threshold_value}")
+        elif key & 0xFF == ord('r') or key & 0xFF == ord('R'):
+            # Rotate camera input by 90 degrees clockwise
+            camera_rotation = (camera_rotation + 90) % 360
+            print(f"Camera rotation: {camera_rotation} degrees")
         elif key & 0xFF == ord(' '):
             filename = f"capture_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
             cv2.imwrite(filename, final_frame)

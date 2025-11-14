@@ -75,6 +75,7 @@ It is recommended to use a virtual environment to manage the project's dependenc
     *   `space`: Save the current frame as a JPG image.
     *   `left arrow`: Decrease the black and white threshold.
     *   `right arrow`: Increase the black and white threshold.
+    *   `r`: Rotate the camera input 90 degrees clockwise (press multiple times for full rotation)
 
 ## Configuration
 
