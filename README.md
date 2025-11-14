@@ -4,7 +4,9 @@ BeagleBadgeCam is a Python application that provides a Game Boy-style camera fee
 
 ## Sample Output
 
-![Sample Output](photos/sample.jpg)
+<p align="center">
+  <img src="photos/sample.jpg" alt="Sample Image"/>
+</p>
 
 ## Features
 
